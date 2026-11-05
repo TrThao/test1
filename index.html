@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#ffd3df" />
+<title>♡</title>
+<style>
+  :root {
+    --bg-1: #ffd3df;
+    --bg-2: #fff3f6;
+    --lav:  #ead9ff;
+    --peach:#ffe3d1;
+    --ink:  #b4365f;
+    --ink-soft: #de6f93;
+    --heart-1: #ff7a9c;
+    --heart-2: #ff3d6e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    min-height: 100dvh;
+    user-select: none; -webkit-user-select: none;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,.7), transparent 40%),
+      radial-gradient(circle at 80% 15%, var(--lav), transparent 45%),
+      radial-gradient(circle at 85% 90%, var(--peach), transparent 45%),
+      radial-gradient(circle at 10% 90%, rgba(255,160,190,.55), transparent 50%),
+      linear-gradient(160deg, var(--bg-1), var(--bg-2));
+    font-family: "Segoe Print", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(180,54,95,.09) 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+    pointer-events: none;
+  }
+
+  svg {
+    width: min(96vw, 1200px);
+    height: auto;
+    max-height: 92dvh;
+    overflow: visible;
+    position: relative; z-index: 1;
+  }
+  @media (orientation: portrait) {
+    svg { width: 100vw; max-height: 88dvh; }
+    /* Nút gọn thành icon tròn, xếp dọc ở góc trên-phải để không đè lên chữ */
+    .ui { right: 12px; bottom: auto; top: calc(12px + env(safe-area-inset-top)); flex-direction: column; gap: 8px; }
+    .ui button { width: 40px; height: 40px; padding: 0; font-size: 18px; border-radius: 50%; box-shadow: 2px 2px 0 var(--ink); }
+    .ui button .txt { display: none; }
+  }
+  #mute.off { opacity: .5; text-decoration: line-through; }
+
+  .draw {
+    fill: none;
+    stroke: var(--ink);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .outline { stroke-width: 4.4; }
+  .inner   { stroke-width: 2.9; stroke: var(--ink-soft); }
+  .bubble  { stroke-width: 3.6; }
+  .spark   { stroke-width: 2.8; stroke: #ff5c86; }
+  .arrow   { stroke-width: 3.4; }
+
+  /* Tô nền não nhẹ sau khi vẽ xong */
+  #brainFill { fill: #ffd9e4; opacity: 0; transition: opacity 1.2s ease; }
+  .done #brainFill { opacity: .55; }
+
+  /* Ảnh trong bong bóng suy nghĩ */
+  #cloudBg { fill: #fff; opacity: 0; transition: opacity .8s ease; }
+  .done #cloudBg { opacity: .95; }
+  #photos image {
+    opacity: 0;
+    transition: opacity 1s ease;
+    transform-origin: 790px 40px;
+    transform-box: view-box;
+  }
+  #photos image.show {
+    opacity: 1;
+    animation: kenburns 4s ease-in-out forwards;
+  }
+  #photoTint { fill: #ff9ab7; opacity: 0; mix-blend-mode: multiply; transition: opacity .8s; }
+  .done #photoTint { opacity: .12; }
+
+  .done .spark { animation: twinkle 1.6s ease-in-out infinite; }
+  .done .spark:nth-child(2n) { animation-delay: .4s; }
+  .done .spark:nth-child(3n) { animation-delay: .8s; }
+  .done #brain { animation: breathe 3.2s ease-in-out infinite; transform-origin: 350px 290px; transform-box: view-box; }
+  .done #bubbleGroup, .done #photoGroup { animation: floaty 3.6s ease-in-out infinite; }
+
+  @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08); } }
+  @keyframes twinkle  { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+  @keyframes breathe  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.018); } }
+  @keyframes floaty   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+  #pen { opacity: 0; transition: opacity .25s; }
+  #pen.visible { opacity: 1; }
+
+  /* Nhãn chữ viết tay */
+  #labelText {
+    font-family: "Segoe Script", "Brush Script MT", "Dancing Script", cursive, "Segoe Print";
+    font-size: 34px;
+    font-weight: 600;
+    fill: var(--ink);
+  }
+  #labelText tspan { opacity: 0; }
+  #labelText tspan.on { opacity: 1; }
+
+  .float-heart {
+    position: fixed;
+    bottom: -40px;
+    font-size: 22px;
+    color: var(--heart-1);
+    opacity: 0;
+    pointer-events: none;
+    animation: rise linear forwards;
+    text-shadow: 0 2px 10px rgba(255,120,160,.35);
+    z-index: 0;
+  }
+  @keyframes rise {
+    0%   { transform: translateY(0) translateX(0) rotate(-8deg) scale(.7); opacity: 0; }
+    10%  { opacity: .9; }
+    90%  { opacity: .6; }
+    100% { transform: translateY(-110vh) translateX(var(--dx)) rotate(10deg) scale(1.1); opacity: 0; }
+  }
+
+  /* Màn hình chờ: cần 1 lần chạm để trình duyệt cho phép phát nhạc */
+  #start {
+    position: fixed; inset: 0; z-index: 10;
+    display: grid; place-items: center;
+    background: rgba(255,235,242,.8);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: opacity .7s ease, visibility .7s;
+  }
+  #start.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  #startBtn {
+    text-align: center;
+    color: var(--ink);
+    font-size: clamp(18px, 5vw, 24px);
+    background: rgba(255,255,255,.75);
+    border: 2.5px solid var(--ink);
+    border-radius: 28px;
+    padding: 22px 34px;
+    box-shadow: 4px 4px 0 var(--ink);
+    animation: pulse 1.6s ease-in-out infinite;
+    max-width: 82vw;
+  }
+  #startBtn .big { font-size: 2.4em; line-height: 1; margin-bottom: 8px; animation: beat 1.3s ease-in-out infinite; }
+  #startBtn .hint { font-size: .6em; opacity: .65; margin-top: 8px; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+  @keyframes beat  { 0%,100% { transform: scale(1); } 15% { transform: scale(1.18); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } 60% { transform: scale(1); } }
+
+  .ui { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); right: 18px; z-index: 2; display: flex; gap: 10px; }
+  .ui button {
+    background: rgba(255,255,255,.6);
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font: inherit; font-size: 14px;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--ink);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .ui button:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--ink); }
+  .ui button:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
+</style>
+</head>
+<body>
+
+<svg id="scene" viewBox="30 -120 940 670" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sketch" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <!-- Vùng cắt ảnh theo hình đám mây (d sinh bằng JS) -->
+    <clipPath id="cloudClip"><path id="cloudClipPath" d="" /></clipPath>
+  </defs>
+
+  <!-- ======= BỘ NÃO ======= -->
+  <g id="brain" filter="url(#sketch)">
+    <!-- nền tô nhẹ (d sinh bằng JS, giống viền ngoài) -->
+    <path id="brainFill" d="" />
+    <!-- Viền đại não (sinh bằng JS: các múi tròn quanh dáng não) -->
+    <path id="cerebrum" class="draw outline" data-speed="700" d="" />
+    <!-- Tiểu não -->
+    <path id="cerebellum" class="draw outline" data-speed="600" d="" />
+    <!-- Thân não -->
+    <path class="draw outline" data-speed="600" d="M 398 432 C 394 458, 402 480, 392 506 L 424 500 C 420 478, 424 455, 428 432" />
+
+    <!-- Nếp não -->
+    <path class="draw inner" data-speed="950" d="M 332 118 C 348 160, 302 200, 320 245 C 336 285, 292 320, 308 362" />
+    <path class="draw inner" data-speed="950" d="M 158 332 C 198 302, 238 346, 288 324 C 338 302, 378 342, 428 320 C 455 308, 478 330, 505 322" />
+    <path class="draw inner" data-speed="950" d="M 178 268 C 198 242, 218 282, 243 257 C 261 240, 252 216, 278 206" />
+    <path class="draw inner" data-speed="950" d="M 218 182 C 242 196, 262 166, 290 181 C 304 190, 316 176, 334 184" />
+    <path class="draw inner" data-speed="950" d="M 166 392 C 194 378, 204 404, 238 394 C 262 388, 272 406, 302 398" />
+    <path class="draw inner" data-speed="950" d="M 202 300 C 222 310, 242 294, 262 306" />
+    <path class="draw inner" data-speed="950" d="M 396 132 C 412 166, 382 196, 406 226 C 426 250, 406 280, 430 300" />
+    <path class="draw inner" data-speed="950" d="M 456 162 C 480 190, 456 216, 480 246 C 494 266, 486 286, 500 300" />
+    <path class="draw inner" data-speed="950" d="M 366 172 C 380 202, 360 232, 376 262" />
+    <path class="draw inner" data-speed="950" d="M 530 242 C 510 272, 540 296, 520 332 C 510 352, 530 366, 516 386" />
+    <path class="draw inner" data-speed="950" d="M 232 346 C 272 360, 302 340, 342 358 C 372 372, 402 350, 440 364" />
+    <path class="draw inner" data-speed="950" d="M 302 394 C 332 384, 352 404, 386 394" />
+    <!-- vân tiểu não -->
+    <path class="draw inner" data-speed="950" d="M 444 448 C 468 440, 492 452, 518 442" />
+    <path class="draw inner" data-speed="950" d="M 450 466 C 474 458, 498 470, 522 460" />
+  </g>
+
+  <!-- ======= NHÃN + MŨI TÊN (vị trí set bằng JS theo dọc/ngang) ======= -->
+  <g id="label">
+    <text id="labelText"></text>
+    <g filter="url(#sketch)">
+      <path id="arrowLine" class="draw arrow" data-speed="520" d="" />
+      <path id="arrowHead" class="draw arrow" data-speed="520" d="" />
+    </g>
+  </g>
+
+  <!-- ======= BONG BÓNG SUY NGHĨ: ẢNH ======= -->
+  <!-- Lớp ảnh (không qua filter sketch để ảnh không bị méo) -->
+  <g id="photoGroup">
+    <path id="cloudBg" d="" />
+    <g id="photos" clip-path="url(#cloudClip)">
+      <!-- <image> sinh bằng JS từ danh sách PHOTOS -->
+    </g>
+    <path id="photoTint" d="" clip-path="url(#cloudClip)" />
+  </g>
+
+  <g id="bubbleGroup" filter="url(#sketch)">
+    <!-- 3 bọt nhỏ + đám mây + lấp lánh: d sinh bằng JS theo bố cục -->
+    <path class="draw bubble dot" data-speed="500" d="" />
+    <path class="draw bubble dot" data-speed="550" d="" />
+    <path class="draw bubble dot" data-speed="600" d="" />
+    <path id="cloud" class="draw bubble" data-speed="1000" d="" />
+
+    <g id="idea">
+      <path class="draw spark" data-speed="700" d="" />
+      <path class="draw spark" data-speed="700" d="" />
+      <path class="draw spark" data-speed="700" d="" />
+      <path class="draw spark" data-speed="700" d="" />
+    </g>
+  </g>
+
+  <!-- Bút chì -->
+  <g id="pen">
+    <g transform="rotate(35)">
+      <rect x="-7" y="-72" width="14" height="54" rx="2" fill="#ff9ab7" stroke="#b4365f" stroke-width="1.6"/>
+      <line x1="-2" y1="-70" x2="-2" y2="-20" stroke="#ffc3d4" stroke-width="2"/>
+      <rect x="-7" y="-78" width="14" height="6" fill="#d9c7cf" stroke="#b4365f" stroke-width="1.6"/>
+      <rect x="-7" y="-88" width="14" height="10" rx="3" fill="#ffd1dc" stroke="#b4365f" stroke-width="1.6"/>
+      <path d="M -7 -18 L 0 0 L 7 -18 Z" fill="#f7dfc4" stroke="#b4365f" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M -2.5 -6.5 L 0 0 L 2.5 -6.5 Z" fill="#4a2a30"/>
+    </g>
+  </g>
+</svg>
+
+<div class="ui">
+  <button id="mute" title="Bật/tắt nhạc">♪<span class="txt"> Nhạc</span></button>
+  <button id="replay" title="Vẽ lại">↻<span class="txt"> Vẽ lại</span></button>
+</div>
+
+<!-- Nhạc nền: "Nhẹ Buông" -->
+<audio id="bgm" src="music.m4a" loop preload="auto"></audio>
+
+<div id="start">
+  <div id="startBtn">
+    <div class="big">♡</div>
+    <div>Chạm vào màn hình để mở</div>
+    <div class="hint">nhớ bật âm lượng nhé 🔊</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ===== Chỉnh chữ nhãn ở đây =====
+  const LABEL = 'Não của Thao bây giờ';
+
+  const scene = document.getElementById('scene');
+  const pen = document.getElementById('pen');
+  const labelText = document.getElementById('labelText');
+
+  // ---- Tạo đường gồm các múi tròn nối qua danh sách điểm ----
+  function bumpPath(pts, closed, bulge = 0.56) {
+    let d = `M ${pts[0][0]} ${pts[0][1]}`;
+    const n = closed ? pts.length : pts.length - 1;
+    for (let i = 0; i < n; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length];
+      const r = Math.hypot(x1 - x0, y1 - y0) * bulge;
+      d += ` A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${x1} ${y1}`;
+    }
+    return closed ? d + ' Z' : d;
+  }
+
+  // Dáng đại não (nhìn nghiêng, trán bên trái), theo chiều kim đồng hồ từ dưới-trước
+  const CEREBRUM = [
+    [182,402],[146,352],[138,292],[160,232],[204,178],[262,138],[332,114],[404,112],
+    [470,134],[526,178],[560,238],[566,300],[546,356],[506,396],
+    [462,420],[410,430],[352,432],[292,430],[234,422]
+  ];
+  const cerebrumD = bumpPath(CEREBRUM, true, 0.56);
+  document.getElementById('cerebrum').setAttribute('d', cerebrumD);
+  document.getElementById('brainFill').setAttribute('d', cerebrumD);
+  // Tiểu não: một múi tròn mềm bám dưới thuỳ chẩm
+  document.getElementById('cerebellum').setAttribute('d',
+    'M 428 432 C 430 470, 466 492, 506 480 C 540 470, 552 436, 534 402');
+
+  // ---- Hai bố cục: ngang (máy tính) và dọc (điện thoại) ----
+  const LAYOUTS = {
+    landscape: {
+      viewBox: '30 -120 940 670',
+      cloud: { cx: 790, cy: 40, rx: 150, ry: 98 },
+      dots: [[566, 182, 8], [598, 158, 12], [634, 132, 16]],
+      label: { x: 42, y: -8, anchor: 'start' },
+      arrow: 'M 236 14 C 262 60, 212 120, 184 184',
+      arrowHead: 'M 170 160 L 184 186 L 204 170',
+    },
+    portrait: {
+      viewBox: '60 -330 580 990',
+      cloud: { cx: 350, cy: -170, rx: 138, ry: 95 },
+      dots: [[412, 80, 7], [396, 44, 11], [376, 6, 15]],
+      label: { x: 350, y: 612, anchor: 'middle' },
+      arrow: 'M 300 574 C 342 548, 300 510, 282 468',
+      arrowHead: 'M 266 484 L 281 465 L 298 480',
+    },
+  };
+  let CLOUD = LAYOUTS.landscape.cloud;
+
+  function cloudPath(cx, cy, rx, ry, bumps) {
+    const pts = [];
+    for (let i = 0; i < bumps; i++) {
+      const a = (i / bumps) * Math.PI * 2 - Math.PI / 2;
+      pts.push([+(cx + Math.cos(a) * rx).toFixed(1), +(cy + Math.sin(a) * ry).toFixed(1)]);
+    }
+    return bumpPath(pts, true, 0.56);
+  }
+  const sparkD = (x, y, s) => `M ${x} ${y + s} L ${x} ${y - s} M ${x - s} ${y} L ${x + s} ${y}`;
+
+  // ---- Ảnh chiếu trong bong bóng ----
+  const PHOTOS = Array.from({ length: 10 }, (_, i) => `photos/${i + 1}.jpg`);
+  const PHOTO_INTERVAL = 2800; // ms mỗi ảnh
+  const photosG = document.getElementById('photos');
+  PHOTOS.forEach(src => {
+    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    img.setAttribute('href', src);
+    img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', src);
+    img.setAttribute('preserveAspectRatio', 'xMidYMin slice');
+    photosG.appendChild(img);
+  });
+  const photoEls = [...photosG.querySelectorAll('image')];
+
+  function isPortrait() {
+    if (location.search.includes('portrait')) return true; // ?portrait để xem thử bố cục dọc trên máy tính
+    return window.innerHeight > window.innerWidth;
+  }
+
+  function applyLayout() {
+    const L = isPortrait() ? LAYOUTS.portrait : LAYOUTS.landscape;
+    CLOUD = L.cloud;
+    scene.setAttribute('viewBox', L.viewBox);
+
+    // đám mây + vùng cắt ảnh
+    const cloudD = cloudPath(CLOUD.cx, CLOUD.cy, CLOUD.rx, CLOUD.ry, 12);
+    ['cloud', 'cloudClipPath', 'cloudBg', 'photoTint'].forEach(id => document.getElementById(id).setAttribute('d', cloudD));
+
+    // bọt nhỏ
+    scene.querySelectorAll('.dot').forEach((p, i) => {
+      const [x, y, r] = L.dots[i];
+      p.setAttribute('d', `M ${x} ${y} a ${r} ${r} 0 1 1 -0.1 0`);
+    });
+
+    // lấp lánh quanh mây
+    const sx = CLOUD.rx + 56, sy = CLOUD.ry + 52;
+    const sparks = [
+      [CLOUD.cx - sx + 20, CLOUD.cy - sy + 30, 8], [CLOUD.cx + sx - 10, CLOUD.cy - sy + 36, 7],
+      [CLOUD.cx + sx - 6, CLOUD.cy + sy - 40, 6], [CLOUD.cx - sx + 40, CLOUD.cy + sy - 24, 5],
+    ];
+    scene.querySelectorAll('.spark').forEach((p, i) => p.setAttribute('d', sparkD(...sparks[i])));
+
+    // nhãn + mũi tên
+    labelText.setAttribute('x', L.label.x);
+    labelText.setAttribute('y', L.label.y);
+    labelText.setAttribute('text-anchor', L.label.anchor);
+    document.getElementById('arrowLine').setAttribute('d', L.arrow);
+    document.getElementById('arrowHead').setAttribute('d', L.arrowHead);
+
+    // khung ảnh: bao quanh đám mây (múi tròn lồi ra thêm ~36)
+    const box = { x: CLOUD.cx - CLOUD.rx - 36, y: CLOUD.cy - CLOUD.ry - 36, w: (CLOUD.rx + 36) * 2, h: (CLOUD.ry + 36) * 2 };
+    const lift = 60; // đẩy khung lên để vùng thấy rơi vào ~12%–65% ảnh (chỗ có mặt)
+    photoEls.forEach(img => {
+      img.setAttribute('x', box.x); img.setAttribute('y', box.y - lift);
+      img.setAttribute('width', box.w); img.setAttribute('height', box.h + lift);
+      img.style.transformOrigin = `${CLOUD.cx}px ${CLOUD.cy}px`;
+    });
+  }
+  let photoTimer = 0, photoIdx = 0;
+  function startSlideshow() {
+    stopSlideshow();
+    photoIdx = 0;
+    photoEls.forEach((el, i) => el.classList.toggle('show', i === 0));
+    photoTimer = setInterval(() => {
+      photoIdx = (photoIdx + 1) % photoEls.length;
+      photoEls.forEach((el, i) => el.classList.toggle('show', i === photoIdx));
+    }, PHOTO_INTERVAL);
+  }
+  function stopSlideshow() {
+    clearInterval(photoTimer);
+    photoEls.forEach(el => el.classList.remove('show'));
+  }
+
+  // Nhãn: tách ký tự
+  function buildLabel() {
+    labelText.textContent = '';
+    [...LABEL].forEach(ch => {
+      const ts = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      ts.textContent = ch === ' ' ? '\u00A0' : ch;
+      labelText.appendChild(ts);
+    });
+  }
+
+  // Trái tim bay
+  let heartTimer = 0;
+  function spawnHearts() {
+    clearInterval(heartTimer);
+    const symbols = ['♥', '♡', '❤', '♥'];
+    heartTimer = setInterval(() => {
+      if (!scene.classList.contains('done')) return;
+      const el = document.createElement('span');
+      el.className = 'float-heart';
+      el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.fontSize = (14 + Math.random() * 20) + 'px';
+      el.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+      el.style.animationDuration = (7 + Math.random() * 6) + 's';
+      el.style.color = Math.random() < 0.5 ? 'var(--heart-1)' : 'var(--heart-2)';
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }, 650);
+  }
+
+  // ---- Timeline ----
+  // Thứ tự: não -> nhãn (chữ rồi mũi tên) -> bong bóng -> trái tim
+  const brainPaths = [...scene.querySelectorAll('#brain path.draw')];
+  const labelPaths = [...scene.querySelectorAll('#label path.draw')];
+  const bubblePaths = [...scene.querySelectorAll('#bubbleGroup path.draw')];
+
+  let timeline = [], total = 0, startAt = 0, rafId = 0;
+
+  function addPaths(list, t) {
+    for (const p of list) {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = `${len} ${len}`;
+      p.style.strokeDashoffset = len;
+      const dur = Math.max(0.12, len / (+p.dataset.speed || 700));
+      timeline.push({ type: 'path', p, len, start: t, end: t + dur });
+      t += dur + 0.06;
+    }
+    return t;
+  }
+
+  function prepare() {
+    scene.classList.remove('done');
+    pen.classList.remove('visible');
+    document.querySelectorAll('.float-heart').forEach(h => h.remove());
+    stopSlideshow();
+    buildLabel();
+    timeline = [];
+
+    let t = 0;
+    t = addPaths(brainPaths, t);
+    t += 0.4;
+    // chữ viết tay
+    const chars = [...labelText.querySelectorAll('tspan')];
+    const textDur = chars.length * 0.085;
+    timeline.push({ type: 'text', chars, start: t, end: t + textDur });
+    t += textDur + 0.2;
+    t = addPaths(labelPaths, t);
+    t += 0.5;
+    t = addPaths(bubblePaths.filter(p => !p.closest('#idea')), t);
+    t += 0.25;
+    t = addPaths(bubblePaths.filter(p => p.closest('#idea')), t);
+    total = t;
+  }
+
+  function play() {
+    cancelAnimationFrame(rafId);
+    prepare();
+    startAt = performance.now();
+    pen.classList.add('visible');
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function setPen(x, y) { pen.setAttribute('transform', `translate(${x} ${y})`); }
+
+  function tick(now) {
+    const t = (now - startAt) / 1000;
+    let penPlaced = false;
+
+    for (const seg of timeline) {
+      if (seg.type === 'path') {
+        if (t <= seg.start) { seg.p.style.strokeDashoffset = seg.len; continue; }
+        const k = Math.min(1, (t - seg.start) / (seg.end - seg.start));
+        const e = k < 1 ? (1 - Math.pow(1 - k, 1.6)) : 1;
+        seg.p.style.strokeDashoffset = seg.len * (1 - e);
+        if (k < 1 && !penPlaced) {
+          const pt = seg.p.getPointAtLength(seg.len * e);
+          setPen(pt.x, pt.y); penPlaced = true;
+        }
+      } else {
+        const n = seg.chars.length;
+        if (t <= seg.start) { seg.chars.forEach(c => c.classList.remove('on')); continue; }
+        const k = Math.min(1, (t - seg.start) / (seg.end - seg.start));
+        const shown = Math.min(n, Math.floor(k * n) + (k < 1 ? 1 : 0));
+        seg.chars.forEach((c, i) => c.classList.toggle('on', i < shown));
+        if (k < 1 && !penPlaced) {
+          try {
+            const idx = Math.max(0, shown - 1);
+            const pos = labelText.getEndPositionOfChar(idx);
+            setPen(pos.x, pos.y - 2); penPlaced = true;
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (!penPlaced && t < total) {
+      const next = timeline.find(s => s.start > t);
+      if (next) {
+        if (next.type === 'path') { const pt = next.p.getPointAtLength(0); setPen(pt.x, pt.y); }
+        else { try { const pos = labelText.getStartPositionOfChar(0); setPen(pos.x, pos.y - 2); } catch (_) {} }
+      }
+    }
+
+    // tiếng bút chì: kêu khi đang kéo nét, im khi nhấc bút
+    pencil(penPlaced);
+
+    if (t >= total) {
+      pen.classList.remove('visible');
+      pencil(false);
+      scene.classList.add('done');
+      startSlideshow();
+      startMusic();          // nhạc chỉ bật khi ảnh hiện lên trong bong bóng
+      spawnHearts();
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // ---- Âm thanh ----
+  const bgm = document.getElementById('bgm');
+  const muteBtn = document.getElementById('mute');
+  let userMuted = false;
+  let fadeTimer = 0;
+  function fadeTo(target, ms = 1500) {
+    clearInterval(fadeTimer);
+    const from = bgm.volume, steps = 30, dt = ms / steps;
+    let i = 0;
+    fadeTimer = setInterval(() => {
+      i++;
+      try { bgm.volume = Math.max(0, Math.min(1, from + (target - from) * (i / steps))); } catch (_) {}
+      if (i >= steps) clearInterval(fadeTimer);
+    }, dt);
+  }
+
+  // Tiếng bút chì "roẹt roẹt": nhiễu trắng qua bộ lọc, mở/đóng theo nét vẽ (Web Audio, không cần file)
+  let actx = null, noiseGain = null, noiseFilter = null;
+  function initPencilSound() {
+    if (actx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    actx = new AC();
+    const len = actx.sampleRate * 2;
+    const buf = actx.createBuffer(1, len, actx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = actx.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    const hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+    noiseFilter = actx.createBiquadFilter(); noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 2400; noiseFilter.Q.value = 0.9;
+    noiseGain = actx.createGain(); noiseGain.gain.value = 0;
+    src.connect(hp).connect(noiseFilter).connect(noiseGain).connect(actx.destination);
+    src.start();
+  }
+  let pencilOn = false, pencilFlutter = 0;
+  function pencil(active) {
+    if (!actx || !noiseGain) return;
+    const now = actx.currentTime;
+    if (active && !userMuted) {
+      // rung biên độ + đổi tần số ngẫu nhiên để nghe giống sột soạt trên giấy
+      if (--pencilFlutter <= 0) {
+        pencilFlutter = 3 + Math.floor(Math.random() * 5);
+        noiseGain.gain.setTargetAtTime(0.10 + Math.random() * 0.14, now, 0.02);
+        noiseFilter.frequency.setTargetAtTime(1600 + Math.random() * 2200, now, 0.04);
+      }
+      pencilOn = true;
+    } else if (pencilOn || !active) {
+      noiseGain.gain.setTargetAtTime(0, now, 0.03);
+      pencilOn = false;
+    }
+  }
+
+  function startMusic() {
+    try { bgm.currentTime = 0; } catch (_) {}
+    bgm.muted = userMuted;
+    try { bgm.volume = 0; } catch (_) {}
+    const p = bgm.play();
+    if (p && p.then) p.then(() => fadeTo(0.9, 1800)).catch(() => {});
+  }
+  function stopMusic() {
+    clearInterval(fadeTimer);
+    bgm.pause();
+    try { bgm.currentTime = 0; } catch (_) {}
+  }
+  muteBtn.addEventListener('click', () => {
+    userMuted = !userMuted;
+    bgm.muted = userMuted;
+    muteBtn.classList.toggle('off', userMuted);
+    if (userMuted) pencil(false);
+  });
+
+  // ---- Bắt đầu: chạm 1 lần vào màn hình ----
+  // iPhone chỉ cho phát âm thanh sau thao tác chạm, nên ngay trong handler này ta
+  // "mở khoá" cả nhạc nền (play câm rồi pause) lẫn AudioContext của tiếng bút chì.
+  const startOverlay = document.getElementById('start');
+  let started = false, startedAt = 0;
+  function begin() {
+    if (started) return;
+    started = true;
+    startedAt = performance.now();
+
+    initPencilSound();
+    if (actx && actx.state === 'suspended') actx.resume();
+
+    bgm.muted = true;
+    const p = bgm.play();
+    if (p && p.then) p.then(() => { bgm.pause(); try { bgm.currentTime = 0; } catch (_) {} bgm.muted = userMuted; })
+                      .catch(() => { bgm.muted = userMuted; });
+
+    startOverlay.classList.add('hidden');
+    setTimeout(play, 350);
+  }
+  startOverlay.addEventListener('pointerup', begin);
+  startOverlay.addEventListener('click', begin);
+
+  // Bố cục ban đầu + xoay màn hình
+  applyLayout();
+  prepare(); // ẩn hết nét trước khi bắt đầu
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      applyLayout();
+      if (started) { stopMusic(); play(); } else prepare();
+    }, 200);
+  });
+
+  function replay() { if (!started) return; stopMusic(); play(); }
+  document.getElementById('replay').addEventListener('click', replay);
+  // click vào hình để vẽ lại (bỏ qua cú click "lọt" xuống ngay sau khi chạm mở màn hình chờ)
+  scene.addEventListener('click', () => { if (performance.now() - startedAt > 800) replay(); });
+})();
+</script>
+</body>
+</html>
